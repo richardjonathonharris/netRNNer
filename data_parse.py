@@ -32,7 +32,8 @@ def exist_wrapper(input_dict, input_key):
 def text_wrapper(full_text):
 	full_text = full_text.replace('[', ' ')
 	full_text = full_text.replace(']', ' ')
-	for tag in ['<strong>', '</strong>', '<trace>', '</trace>']:
+	full_text = full_text.replace('<errata>', 'errata: ')
+	for tag in ['<strong>', '</strong>', '<trace>', '</trace>', '</errata>']:
 		full_text = full_text.replace(tag, '')
 	return full_text
 
