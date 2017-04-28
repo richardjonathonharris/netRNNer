@@ -5,6 +5,8 @@ import numpy as np
 import math
 import sys
 import random
+from datetime import datetime
+from communicate import jobs_done
 
 with open('card_text.txt', 'r') as f:
 	data = f.read()
@@ -29,11 +31,11 @@ print(max_sentence_length)
 
 # TF parameters
 
-n_hidden = 28
-seq_length = 5
+n_hidden = 64
+seq_length = 50
 learning_rate = 0.001
 batch_size = 1
-num_epochs = 10
+num_epochs = 1
 display_step = 1
 num_sentences_for_epoch = 25
 
@@ -73,6 +75,9 @@ def generate_chain(past_text, current_pred=''):
 	if len(gen_text) > seq_length:
 		counter_start = len(gen_text) - seq_length
 		return gen_text[counter_start:]
+	elif len(gen_text) < seq_length:
+		counter_start = seq_length - len(gen_text) 
+		return '~'*counter_start + gen_text
 	else:
 		return gen_text
 
@@ -80,6 +85,7 @@ print(char_indices)
 print(len(list(range(max_sentence_length))))
 
 init = tf.global_variables_initializer()
+saver = tf.train.Saver()
 
 with tf.Session() as session:
 	session.run(init)
@@ -99,7 +105,8 @@ with tf.Session() as session:
 		random_num = [random.randint(0, len(sentences)) for x in range(num_sentences_for_epoch)]
 		for mini_batch in random_num: # per epoch, cycle through each sentences
 			sent = sentences[mini_batch]
-			print('Using card %s' % counter)
+			print('Using card %s: %s' % (counter, sent))
+			time_then = datetime.now()
 			if len(sent) < max_sentence_length: # if sentence isn't max length, pad with '~'
 				num_to_fill = max_sentence_length - len(sent)
 				full_fill = '~' * num_to_fill
@@ -123,6 +130,7 @@ with tf.Session() as session:
 
 			print('Average loss for sentence %s' % (loss_total / (len(list(range(max_sentence_length - seq_length))))))
 			print('Average accuracy for sentence %s' % (acc_total / (len(list(range(max_sentence_length - seq_length))))))
+			print('Time elapsed for card %s' % (datetime.now() - time_then))
 			loss_across_iteration += loss_total / (len(list(range(max_sentence_length - seq_length))))
 			acc_across_iteration += acc_total / (len(list(range(max_sentence_length - seq_length))))
 			acc_total = 0
@@ -138,6 +146,8 @@ with tf.Session() as session:
 			acc_across_iteration = 0
 
 		step += 1
+		save_path = saver.save(session, 'model.ckpt')
+		print('Model saved in file: %s' % save_path)
 
 	pred_text = 'my new card is this one -'
 	for counter in range(100):

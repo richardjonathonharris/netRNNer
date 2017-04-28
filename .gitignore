@@ -1,2 +1,5 @@
 *.json
 *.txt
+*.ckpt*
+checkpoint
+__pycache__/
