@@ -3,3 +3,6 @@
 *.ckpt*
 checkpoint
 __pycache__/
+*.data-*
+*.index
+*.meta

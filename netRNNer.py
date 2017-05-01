@@ -36,15 +36,15 @@ num_offsets_per_sentence = math.ceil(max_sentence_length / seq_length)
 
 final_length_of_sentences = (seq_length * num_offsets_per_sentence)
 
-x = tf.placeholder(tf.float32, shape=[None, seq_length, 1])
-y = tf.placeholder(tf.float32, shape=[None, len(chars)+1])
+x = tf.placeholder(tf.float32, shape=[None, seq_length, 1], name='feed_x')
+y = tf.placeholder(tf.float32, shape=[None, len(chars)+1], name='feed_y')
 
 weights = {
-	'out': tf.Variable(tf.random_normal([n_hidden, len(chars)+1]))
+	'out': tf.Variable(tf.random_normal([n_hidden, len(chars)+1]), name='weights')
 }
 
 biases = {
-	'out': tf.Variable(tf.random_normal([len(chars)+1]))
+	'out': tf.Variable(tf.random_normal([len(chars)+1]), name='biases')
 }
 
 def RNN(x, weights, biases):
@@ -82,7 +82,7 @@ with tf.Session() as session:
 	count_iterations = len(list(range(max_sentence_length - seq_length)))
 
 	while step < num_epochs: # set up cycle of epochs
-		print('starting epochs')
+		tf.add_to_collection('predictor', pred)
 
 		for index in random_sets(sentences, num_sentences_for_epoch): # per epoch, cycle through each sentences
 			sent = return_padded_sentence(counter, sentences, index, max_sentence_length)
@@ -124,7 +124,7 @@ with tf.Session() as session:
                   "{:.2f}%\n".format(100*(sum(acc_across_iteration)/len(acc_across_iteration))))
 
 		step += 1
-		save_path = saver.save(session, 'model.ckpt')
+		save_path = saver.save(session, 'model')
 		print('Model saved in file: %s' % save_path)
 
 	pred_text = 'my new card is this one -'
@@ -138,3 +138,4 @@ with tf.Session() as session:
 		pred_text += symbols_out_pred
 
 	print(pred_text)
+
