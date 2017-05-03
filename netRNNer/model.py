@@ -35,7 +35,7 @@ def return_padded_sentence(counter, text, index, max_sentence_length):
 
 def symbols_in_transformer(sentence, offset, seq_length, indices):
 	symbols_in_keys = [[indices[str(sentence[i])]] for i in range(offset, offset+seq_length)]
-	return np.reshape(np.array(symbols_in_keys), [-1, seq_length, 1]) 
+	return np.reshape(np.array(symbols_in_keys, dtype=float), [-1, seq_length, 1]) 
 
 def symbols_out_transformer(char_length, character, indices):
 	symbols_out_onehot = np.zeros([char_length+1], dtype=float) 

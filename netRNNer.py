@@ -23,13 +23,15 @@ char_indices, indices_char = indice_transformer(chars)
 
 # TF parameters
 
-n_hidden = 12
-seq_length = 20
+n_hidden = 48
+seq_length = 50
 learning_rate = 0.001
 batch_size = 1
 num_epochs = 1
 display_step = 1
-num_sentences_for_epoch = 1
+input_dropout = 0.90
+output_dropout = 0.90
+num_sentences_for_epoch = 250
 
 num_batch_per_epoch = math.ceil(len(sentences) / batch_size)
 num_offsets_per_sentence = math.ceil(max_sentence_length / seq_length)
@@ -51,8 +53,13 @@ def RNN(x, weights, biases):
 	x = tf.reshape(x, [-1, seq_length])
 	x = tf.split(x, seq_length, 1)
 	rnn_cell = rnn.MultiRNNCell(
-		[rnn.BasicLSTMCell(n_hidden), 
-		rnn.BasicLSTMCell(n_hidden)]
+		[
+		tf.contrib.rnn.DropoutWrapper(rnn.BasicLSTMCell(n_hidden), 
+			input_keep_prob=input_dropout,
+			output_keep_prob=output_dropout),
+		tf.contrib.rnn.DropoutWrapper(rnn.BasicLSTMCell(n_hidden), 
+			input_keep_prob=input_dropout,
+			output_keep_prob=output_dropout)]
 		)
 	outputs, states = rnn.static_rnn(rnn_cell, x, dtype=tf.float32)
 	return tf.matmul(outputs[-1], weights['out']) + biases['out']
@@ -79,10 +86,12 @@ with tf.Session() as session:
 	loss_across_iteration = []
 	acc_across_iteration = []
 	preds = []
+	count_tildes = 0
 	count_iterations = len(list(range(max_sentence_length - seq_length)))
 
 	while step < num_epochs: # set up cycle of epochs
 		tf.add_to_collection('predictor', pred)
+		tf.add_to_collection('feed_x', x)
 
 		for index in random_sets(sentences, num_sentences_for_epoch): # per epoch, cycle through each sentences
 			sent = return_padded_sentence(counter, sentences, index, max_sentence_length)
@@ -99,8 +108,11 @@ with tf.Session() as session:
 					feed_dict={x: symbols_in_keys, y:symbols_out_onehot})
 				# if counter % 100 == 0:
 				# 	preds.append(indices_char[int(tf.argmax(onehot_pred, 1).eval())])
-				loss_total += loss
-				acc_total += acc
+				if sent[offset+seq_length] != '~':
+					loss_total += loss
+					acc_total += acc
+				else:
+					count_tildes += 1
 				if (offset + seq_length) < max_sentence_length-1:
 					offset += 1
 				sequence_counter+=1
@@ -109,13 +121,16 @@ with tf.Session() as session:
 			# if counter % 100 == 0:
 			# 	print('Actual predictions across sentence %s' % ''.join(preds))
 			# 	preds = []
-			print('Average loss for sentence %s' % (loss_total / count_iterations))
-			print('Average accuracy for sentence %s' % (acc_total / count_iterations))
+			count_iterations_less_tildes = count_iterations - count_tildes
+			print('Average loss for sentence %s' % (loss_total / count_iterations_less_tildes))
+			print('Average accuracy for sentence %s' % (acc_total / count_iterations_less_tildes))
+			print('Number of predictions for sentence that were not padding %s' % count_iterations_less_tildes)
 			print('Time elapsed for card %s' % (datetime.now() - time_then))
-			loss_across_iteration.append(loss_total / count_iterations)
-			acc_across_iteration.append(acc_total / count_iterations)
+			loss_across_iteration.append(loss_total / count_iterations_less_tildes)
+			acc_across_iteration.append(acc_total / count_iterations_less_tildes)
 			acc_total = 0
 			loss_total = 0
+			count_tildes = 0
 			counter += 1
 
 		if (step) % display_step == 0:
