@@ -31,15 +31,15 @@ char_indices, indices_char = indice_transformer(chars)
 
 # TF parameters
 
-n_hidden = 12
+n_hidden = 512
 seq_length = 5
 learning_rate = 0.001
 batch_size = 1
-num_epochs = 2
+num_epochs = 40
 display_step = 1
 input_dropout = 0.90
 output_dropout = 0.90
-num_sentences_for_epoch = 2
+num_sentences_for_epoch = len(sentences)
 
 num_batch_per_epoch = math.ceil(len(sentences) / batch_size)
 num_offsets_per_sentence = math.ceil(max_sentence_length / seq_length)
@@ -101,7 +101,6 @@ with tf.Session() as session:
 	while step < num_epochs: # set up cycle of epochs
 
 		start_time = datetime.now()
-
 		counter = 0
 
 		for index in random_sets(sentences, num_sentences_for_epoch): # per epoch, cycle through each sentences
