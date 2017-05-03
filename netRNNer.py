@@ -39,7 +39,7 @@ num_epochs = 2
 display_step = 1
 input_dropout = 0.90
 output_dropout = 0.90
-num_sentences_for_epoch = 500
+num_sentences_for_epoch = 2
 
 num_batch_per_epoch = math.ceil(len(sentences) / batch_size)
 num_offsets_per_sentence = math.ceil(max_sentence_length / seq_length)
@@ -150,3 +150,4 @@ with tf.Session() as session:
 
 		step += 1
 		save_path = saver.save(session, 'model')
+		jobs_done('Your job is finished')
