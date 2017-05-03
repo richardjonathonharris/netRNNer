@@ -9,6 +9,14 @@ from datetime import datetime
 from communicate import jobs_done
 from netRNNer.model import indice_transformer, generate_chain, random_sets, \
 	return_padded_sentence, symbols_in_transformer, symbols_out_transformer
+import logging
+
+logging.basicConfig(
+	filename='logfile.log',
+	format='%(asctime)s %(message)s',
+	datefmt='%Y-%m-%d %H:%M:%S%z',
+	level=logging.DEBUG
+	)
 
 with open('card_text.txt', 'r') as f:
 	data = f.read()
@@ -23,15 +31,15 @@ char_indices, indices_char = indice_transformer(chars)
 
 # TF parameters
 
-n_hidden = 48
-seq_length = 50
+n_hidden = 12
+seq_length = 5
 learning_rate = 0.001
 batch_size = 1
-num_epochs = 1
+num_epochs = 2
 display_step = 1
 input_dropout = 0.90
 output_dropout = 0.90
-num_sentences_for_epoch = 250
+num_sentences_for_epoch = 500
 
 num_batch_per_epoch = math.ceil(len(sentences) / batch_size)
 num_offsets_per_sentence = math.ceil(max_sentence_length / seq_length)
@@ -82,19 +90,22 @@ with tf.Session() as session:
 	acc_total = 0
 	loss_total = 0 
 	current_sentence_start = 0
-	counter = 0
 	loss_across_iteration = []
 	acc_across_iteration = []
 	preds = []
 	count_tildes = 0
 	count_iterations = len(list(range(max_sentence_length - seq_length)))
+	tf.add_to_collection('predictor', pred)
+	tf.add_to_collection('feed_x', x)
 
 	while step < num_epochs: # set up cycle of epochs
-		tf.add_to_collection('predictor', pred)
-		tf.add_to_collection('feed_x', x)
+
+		start_time = datetime.now()
+
+		counter = 0
 
 		for index in random_sets(sentences, num_sentences_for_epoch): # per epoch, cycle through each sentences
-			sent = return_padded_sentence(counter, sentences, index, max_sentence_length)
+			sent = return_padded_sentence(sentences, index, max_sentence_length)
 			time_then = datetime.now()
 			offset = 0 
 			sequence_counter = 0
@@ -106,8 +117,6 @@ with tf.Session() as session:
 
 				_, acc, loss, onehot_pred = session.run([optimizer, accuracy, cost, pred], \
 					feed_dict={x: symbols_in_keys, y:symbols_out_onehot})
-				# if counter % 100 == 0:
-				# 	preds.append(indices_char[int(tf.argmax(onehot_pred, 1).eval())])
 				if sent[offset+seq_length] != '~':
 					loss_total += loss
 					acc_total += acc
@@ -117,40 +126,27 @@ with tf.Session() as session:
 					offset += 1
 				sequence_counter+=1
 
-			# Turn this on during actual run
-			# if counter % 100 == 0:
-			# 	print('Actual predictions across sentence %s' % ''.join(preds))
-			# 	preds = []
 			count_iterations_less_tildes = count_iterations - count_tildes
-			print('Average loss for sentence %s' % (loss_total / count_iterations_less_tildes))
-			print('Average accuracy for sentence %s' % (acc_total / count_iterations_less_tildes))
-			print('Number of predictions for sentence that were not padding %s' % count_iterations_less_tildes)
-			print('Time elapsed for card %s' % (datetime.now() - time_then))
-			loss_across_iteration.append(loss_total / count_iterations_less_tildes)
-			acc_across_iteration.append(acc_total / count_iterations_less_tildes)
+			average_loss_sentence = loss_total / count_iterations_less_tildes
+			average_accuracy_sentence = acc_total / count_iterations_less_tildes
+			# non_padding_predicts = count_iterations_less_tildes 
+			time_elapsed = datetime.now() - time_then
+			time_elapsed_all = datetime.now() - start_time
+
+
+			loss_across_iteration.append(average_loss_sentence)
+			acc_across_iteration.append(average_accuracy_sentence)
 			acc_total = 0
 			loss_total = 0
 			count_tildes = 0
 			counter += 1
 
-		if (step) % display_step == 0:
-			print("\nIter= " + str(step) + ", Average Loss= " + \
-                  "{:.6f}".format(sum(loss_across_iteration)/len(loss_across_iteration)) + ", Average Accuracy= " + \
-                  "{:.2f}%\n".format(100*(sum(acc_across_iteration)/len(acc_across_iteration))))
+			logging.debug(
+					'(Epoch %s, Counter %s): Time Elapsed for Card %s, Average Loss Across Card %s, Average Accuracy Across Card %s, Time Elapsed Overall %s'  % (step, 
+						counter, time_elapsed, 
+						average_loss_sentence, average_accuracy_sentence,
+						time_elapsed_all)
+				)
 
 		step += 1
 		save_path = saver.save(session, 'model')
-		print('Model saved in file: %s' % save_path)
-
-	pred_text = 'my new card is this one -'
-	symbols_out_pred = ' '
-	for counter in range(100):
-		send_text = generate_chain(pred_text, seq_length)
-		print('Full text is %s, sending in is %s, Current next char pred is %s' % (pred_text, send_text, symbols_out_pred))
-		symbols_in = symbols_in_transformer(send_text, 0, len(send_text), char_indices)
-		onehot_pred = session.run(pred, feed_dict={x: symbols_in})
-		symbols_out_pred = indices_char[int(tf.argmax(onehot_pred, 1).eval())]
-		pred_text += symbols_out_pred
-
-	print(pred_text)
-

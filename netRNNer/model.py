@@ -21,12 +21,10 @@ def generate_chain(past_text, seq_length, current_pred=''):
 
 def random_sets(sentences, number_to_choose):
 	sent_indexes = [random.randint(0, len(sentences)-1) for x in range(number_to_choose)]
-	print('Selecting these indices %s' % sent_indexes)
 	return sent_indexes
 
-def return_padded_sentence(counter, text, index, max_sentence_length):
+def return_padded_sentence(text, index, max_sentence_length):
 	text = text[index]
-	print('Counter %s, Card Index: %s, Card Text: %s' % (counter, index, text))
 	if len(text) < max_sentence_length: # if sentence isn't max length, pad with '~'
 		num_to_fill = max_sentence_length - len(text)
 		full_fill = '~' * num_to_fill
